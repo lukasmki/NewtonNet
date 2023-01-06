@@ -1,0 +1,44 @@
+#! /usr/bin/env python
+
+import os
+import argparse
+
+import numpy as np
+from matplotlib import pyplot as plt
+
+parser = argparse.ArgumentParser(
+    description=
+    'Plot validation data from model training.'
+)
+
+parser.add_argument(
+    'path',
+    type=str,
+    help="The path to the validation directory."
+)
+
+args = parser.parse_args()
+path = args.path
+
+# Energy
+test_E = np.load(path + "/" + "test_E.npy")
+test_pred_E = np.load(path + "/" + "test_pred_E.npy")
+x = np.arange(test_E.shape[0])
+
+fig, ax = plt.subplots()
+ax.scatter(test_E, test_pred_E)
+ax.plot(test_E, test_E, linestyle='dashed', color='black')
+plt.show()
+
+# Forces
+AM = np.load(path + "/" + "test_AM.npy")
+test_F = np.load(path + "/" + "test_F.npy")
+test_pred_F = np.load(path + "/" + "test_pred_F.npy")
+
+fig, ax = plt.subplots(1, 3, figsize=(15, 4))
+
+for i in range(3):
+    ax[i].scatter(test_F[::, ::, i], test_pred_F[::, ::, i])
+    ax[i].plot(test_F[::, ::, i], test_F[::, ::, i])
+
+plt.show()
