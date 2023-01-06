@@ -1,7 +1,9 @@
 # NewtonNet
+
 A Newtonian message passing network for deep learning of interatomic potentials and forces
 
 ## Installation and Dependencies
+
 We recommend using conda environment to install dependencies of this library first.
 Please install (or load) conda and then proceed with the following commands:
 
@@ -10,8 +12,8 @@ Please install (or load) conda and then proceed with the following commands:
     conda install -c conda-forge numpy scipy scikit-learn pandas ase tqdm
     pip install pyyaml
 
-You also need to install Pytorch based on your hardware (we support both cpu and gpu) and the command line 
-provided on the official website: https://pytorch.org/get-started/locally/
+You also need to install Pytorch based on your hardware (we support both cpu and gpu) and the command line
+provided on the official website: <https://pytorch.org/get-started/locally/>
 
 Now, you can install NewtonNet in the conda environment by cloning this repository:
 
@@ -24,12 +26,11 @@ and then runnig the following command inside the NewtonNet repository (where you
 Once you finished installations succesfully, you will be able to run NewtonNet modules
 anywhere on your computer as long as the `newtonnet` environment is activated.
 
-
 ## Guidelines
-- You can find several run files inside the scripts directory that rely on the implemented modules in the NewtonNet library. 
+
+- You can find several run files inside the scripts directory that rely on the implemented modules in the NewtonNet library.
 
 - The run scripts need to be accompanied with a yaml configuration file.
 
 - The documentation of the modules are available at most cases. Please look up local classes or functions
 and consult with the docstrings in the code.
-
