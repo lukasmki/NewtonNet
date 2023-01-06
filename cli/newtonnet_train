@@ -36,7 +36,7 @@ parser.add_argument(
     type=str,
     required=False,
     default='ccsd',
-    help="The name of dataset to select the appropriate parser. We provide data parsers for 'md17', 'ccsd', 'ani', 'hydroggen' and 'methane' data sets."\
+    help="The name of dataset to select the appropriate parser. We provide data parsers for 'md17', 'ccsd', 'ani', 'hydrogen' and 'methane' data sets."\
          "For all other data sets do not specify.")
 
 
