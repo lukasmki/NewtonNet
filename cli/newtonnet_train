@@ -98,10 +98,11 @@ model = NewtonNet(resolution=settings['model']['resolution'],
                shared_interactions=settings['model']['shared_interactions'],
                return_latent=settings['model']['return_latent'],
                double_update_latent=settings['model']['double_update_latent'],
-               layer_norm=settings['model']['layer_norm']
+               layer_norm=settings['model']['layer_norm'],
+               aggregation=settings['model']['aggregation']
                )
 
-# laod pre-trained model
+# load pre-trained model
 if settings['model']['pre_trained']:
     model_path = settings['model']['pre_trained']
     model.load_state_dict(torch.load(model_path)['model_state_dict'])

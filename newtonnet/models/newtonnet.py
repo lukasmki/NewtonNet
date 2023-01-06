@@ -61,7 +61,7 @@ class NewtonNet(nn.Module):
                  atomic_properties_only=False,
                  double_update_latent=True,
                  pbc=False,
-                 aggregration='sum'):
+                 aggregation='sum'):
 
         super(NewtonNet, self).__init__()
 
@@ -145,7 +145,7 @@ class NewtonNet(nn.Module):
                                         device=device))
 
         self.atomic_properties_only = atomic_properties_only
-        self.aggregration = aggregration
+        self.aggregation = aggregation
 
     def forward(self, data):
 
@@ -219,11 +219,11 @@ class NewtonNet(nn.Module):
 
         # inverse normalize
         Ei = Ei * AM[..., None]  # (B,A,1)
-        if self.aggregration == 'sum':
+        if self.aggregation == 'sum':
             E = torch.sum(Ei, 1)  # (B,1)
-        elif self.aggregration == 'mean':
+        elif self.aggregation == 'mean':
             E = torch.mean(Ei, 1)
-        elif self.aggregration == 'max':
+        elif self.aggregation == 'max':
             E = torch.max(Ei, 1).values
         if not self.normalize_atomic:
             E = self.inverse_normalize(E)
@@ -293,7 +293,7 @@ class DynamicsCalculator(nn.Module):
             Dense(n_features, n_features, activation=activation, bias=False),
             Dense(n_features, n_features, activation=None, bias=False),
         )
-
+        
         self.phi_e = nn.Sequential(
             Dense(n_features, n_features, activation=activation),
             Dense(n_features, n_features, activation=None)
@@ -335,6 +335,8 @@ class DynamicsCalculator(nn.Module):
 
         Returns
         -------
+        out: torch.tensor
+            usually of shape B,A
 
         """
         dim_diff = x.dim() - mask.dim()

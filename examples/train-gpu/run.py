@@ -46,7 +46,7 @@ model = NewtonNet(resolution=settings['model']['resolution'],
                return_latent=settings['model']['return_latent'],
                double_update_latent=settings['model']['double_update_latent'],
                layer_norm=settings['model']['layer_norm'],
-               aggregration=settings['model']['aggregration']
+               aggregation=settings['model']['aggregation']
                )
 
 # laod pre-trained model

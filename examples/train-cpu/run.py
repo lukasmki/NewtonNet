@@ -46,7 +46,7 @@ model = NewtonNet(resolution=settings['model']['resolution'],
                return_latent=settings['model']['return_latent'],
                double_update_latent=settings['model']['double_update_latent'],
                layer_norm=settings['model']['layer_norm'],
-               aggregration=settings['model']['aggregration']
+               aggregation=settings['model']['aggregation']
                )
 
 # load pre-trained model
@@ -124,7 +124,8 @@ trainer = Trainer(model=model,
                   checkpoint_test=settings['checkpoint']['test'],
                   checkpoint_model=settings['checkpoint']['model'],
                   verbose=settings['checkpoint']['verbose'],
-                  hooks=settings['hooks'])
+                  hooks=settings['hooks'],
+                  mode='energy/force')
 
 trainer.print_layers()
 

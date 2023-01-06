@@ -33,7 +33,7 @@ model:
   return_latent: True         # if True, the latent space will be returned for the future investigation
   double_update_latent: False #
   layer_norm: False           # normalize hidden layer with a 1D layer_norm function
-  aggregration: sum           # aggregration function to use if the prediction may not be represented as the sum of atomic components. 
+  aggregation: sum           # aggregation function to use if the prediction may not be represented as the sum of atomic components. 
                               # Options are: sum, mean, max
 
 training:
