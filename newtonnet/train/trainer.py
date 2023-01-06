@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from torch.optim.lr_scheduler import ReduceLROnPlateau, LambdaLR
 from torch import nn
-from newtonnet.utils.utility import standardize_batch
+from newtonnet.utils import standardize_batch
 from itertools import chain
 
 
@@ -152,7 +152,7 @@ class Trainer:
     def _hooks(self, hooks):
         hooks_list = []
         if 'vismolvector3d' in hooks and hooks['vismolvector3d']:
-            from combust.train.hooks import VizMolVectors3D
+            from newtonnet.train.hooks import VizMolVectors3D
 
             vis = VizMolVectors3D()
             vis.set_output(True, None)
