@@ -124,7 +124,7 @@ class NewtonNet(nn.Module):
             self.norm = nn.ModuleList([nn.LayerNorm(n_features) for _ in range(n_interactions)])
 
         # final dense network
-        self.atomic_energy = AtomicEnergy(n_features, activation, dropout)
+        self.atomic_energy = AtomicProperty(n_features, activation, dropout)
 
         self.normalize_atomic = normalize_atomic
         if normalize_atomic:
@@ -193,7 +193,7 @@ class NewtonNet(nn.Module):
                                                                                   NM,
                                                                                   f_dir, f_dynamics, r_dynamics,
                                                                                   e_dynamics
-                                                                                  )  # B,A,f  # B,A,N,f
+                                                                                  )  # B,A,nf  # B,A,N,nf
 
             if self.layer_norm:
                 a = self.norm[i_interax](a)
@@ -412,11 +412,9 @@ class DynamicsCalculator(nn.Module):
 
         return a, f_dir, f_dynamics, r_dynamics, e_dynamics
 
-
-class AtomicEnergy(nn.Module):
-
+class AtomicProperty(nn.Module):
     def __init__(self, n_features, activation, dropout):
-        super(AtomicEnergy, self).__init__()
+        super(AtomicProperty, self).__init__()
         self.environment = nn.Sequential(
             Dense(n_features, 128,
                   activation=activation,
@@ -433,7 +431,16 @@ class AtomicEnergy(nn.Module):
         )
 
     def forward(self, a):
-        # update atomic features
-        out = self.environment(a)
+        return self.environment(a)
 
-        return out
+class PairProperty(nn.Module):
+    def __init__(self, n_features, resolution, activation):
+        super(PairProperty, self).__init__()
+        
+        # Directional
+
+        # Non-Directional
+    
+    def forward(self, a, rbf, distances, distance_vector, N, NM,
+               pairProperty, pairPropertyLatent):
+        return a, pairProperty, pairPropertyLatent

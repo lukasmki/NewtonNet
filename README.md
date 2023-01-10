@@ -34,3 +34,9 @@ anywhere on your computer as long as the `newtonnet` environment is activated.
 
 - The documentation of the modules are available at most cases. Please look up local classes or functions
 and consult with the docstrings in the code.
+
+## Unittests
+
+To run the tests, simply run:
+
+    python -m unittest tests/
