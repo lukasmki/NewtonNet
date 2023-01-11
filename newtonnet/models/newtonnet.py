@@ -58,7 +58,8 @@ class NewtonNet(nn.Module):
                  shared_interactions=False,
                  return_latent=False,
                  layer_norm=False,
-                 atomic_properties_only=False,
+                 atomic_properties=False,
+                 pair_properties=False,
                  double_update_latent=True,
                  pbc=False,
                  aggregation='sum'):
@@ -144,7 +145,15 @@ class NewtonNet(nn.Module):
                     stddev=torch.tensor(normalizer[1],
                                         device=device))
 
-        self.atomic_properties_only = atomic_properties_only
+        # Optional Atomic Property prediction
+        self.atomic_properties = atomic_properties
+        if atomic_properties:
+            self.atomic_property = AtomicProperty(n_features, activation, dropout)
+        # Optional Atomic Pair Property prediction
+        self.pair_properties = pair_properties
+        if pair_properties:
+            self.pair_property = PairProperty(n_features, resolution, activation, cutoff, cutoff_network)
+
         self.aggregation = aggregation
 
     def forward(self, data):
@@ -189,11 +198,7 @@ class NewtonNet(nn.Module):
             # print('iter: ', i_interax)
 
             # messages
-            a, f_dir, f_dynamics, r_dynamics, e_dynamics = self.dycalc[i_interax](a, rbf, distances, distance_vector, N,
-                                                                                  NM,
-                                                                                  f_dir, f_dynamics, r_dynamics,
-                                                                                  e_dynamics
-                                                                                  )  # B,A,nf  # B,A,N,nf
+            a, msij, f_dir, f_dynamics, r_dynamics, e_dynamics = self.dycalc[i_interax](a, rbf, distances, distance_vector, N, NM, f_dir, f_dynamics, r_dynamics, e_dynamics)
 
             if self.layer_norm:
                 a = self.norm[i_interax](a)
@@ -201,18 +206,23 @@ class NewtonNet(nn.Module):
             if self.return_intermediate:
                 hs.append((a, f_dir, f_dynamics, r_dynamics, e_dynamics))
 
-        # When using the network to obtain atomic properties only
-        if self.atomic_properties_only:
-            Ai = self.atomic_energy(a)
+        # Output
+        output = dict()
+
+        if self.atomic_properties:
+            Ai = self.atomic_property(a)
             if self.normalize_atomic:
                 Ai = self.inverse_normalize(Ai, Z)
             else:
                 for atomic_type in self.inverse_normalize:
                     atomic_filter = Z == int(atomic_type)
                     Ai[atomic_filter] = self.inverse_normalize[atomic_type](Ai[atomic_filter])
-            return {'Ai': Ai}
+            output['Ai'] = Ai
+        
+        if self.pair_properties:
+            Pij = self.pair_property(msij)
+            output['Pij'] = Pij
 
-        # output net
         Ei = self.atomic_energy(a)
         if self.normalize_atomic:
             Ei = self.inverse_normalize(Ei, Z)
@@ -243,9 +253,11 @@ class NewtonNet(nn.Module):
             dE = data['F']
 
         if self.return_intermediate:
-            return {'E': E, 'F': dE, 'Ei': Ei, 'hs': hs, 'F_latent': f_dir}
+            output.update({'E': E, 'F': dE, 'Ei': Ei, 'hs': hs, 'F_latent': f_dir})
         else:
-            return {'E': E, 'F': dE, 'Ei': Ei, 'F_latent': f_dir}
+            return output.update({'E': E, 'F': dE, 'Ei': Ei, 'F_latent': f_dir})
+        
+        return output
 
 
 class DynamicsCalculator(nn.Module):
@@ -382,35 +394,32 @@ class DynamicsCalculator(nn.Module):
         if self.double_update_latent:
             a = a + self.sum_neighbors(msij, NM, dim=2)
 
-        # Dynamics: Forces
-        # print('msij:', msij.shape, msij[0,0])
+        # Dynamics: Force Module
         F_ij = self.phi_f(msij) * distance_vector  # B,A,N,3
         F_i_dir = self.sum_neighbors(F_ij, NM, dim=2)  # B,A,3
         f_dir = f_dir + F_i_dir
 
         F_ij = self.phi_f_scale(msij).unsqueeze(-2) * F_ij.unsqueeze(-1)  # B,A,N,3,nf
-        # print('F_ij:', F_ij.shape, F_ij[0,0])
         F_i = self.sum_neighbors(F_ij, NM, dim=2)  # B,A,3,nf
+        
+        f_dynamics = f_dynamics + F_i # update
 
-        # dr
+        # Dynamics: Displacement Module
         dr_i = self.phi_r(a).unsqueeze(-2) * F_i  # B,A,3,nf
 
         dr_j = self.gather_neighbors(r_dynamics, N)  # B,A,N,3,nf
         dr_j = self.phi_r_ext(msij).unsqueeze(-2) * dr_j  # B,A,N,3,nf
-        # print('dr_j:', dr_j.shape, dr_j[0,0])
         dr_ext = self.sum_neighbors(dr_j, NM, dim=2, avg=False)  # B,A,3,nf
 
-        # update
-        f_dynamics = f_dynamics + F_i
-        r_dynamics = r_dynamics + dr_i + dr_ext
+        r_dynamics = r_dynamics + dr_i + dr_ext # update
 
-        # update energy
+        # Dynamics: Energy Module
         de_i = -1.0 * torch.sum(f_dynamics * r_dynamics, dim=-2)  # B,A,nf
         de_i = self.phi_e(a) * de_i
         a = a + de_i
         e_dynamics = e_dynamics + de_i
 
-        return a, f_dir, f_dynamics, r_dynamics, e_dynamics
+        return a, msij, f_dir, f_dynamics, r_dynamics, e_dynamics
 
 class AtomicProperty(nn.Module):
     def __init__(self, n_features, activation, dropout):
@@ -434,13 +443,21 @@ class AtomicProperty(nn.Module):
         return self.environment(a)
 
 class PairProperty(nn.Module):
-    def __init__(self, n_features, resolution, activation):
+    def __init__(self, n_features, resolution, activation, cutoff, cutoff_network):
         super(PairProperty, self).__init__()
-        
-        # Directional
+        # a, (B, A, nf)
+        # pair_property, (B, A, A)
+        self.phi_p = nn.Sequential(
+            Dense(n_features, 128, activation=activation, bias=False),
+            Dense(128, 64, activation=activation, bias=False),
+            Dense(64, 1, activation=activation, bias=False),
+        )
+        # cutoff layer used in interaction block
+        if cutoff_network == 'poly':
+            self.cutoff_network = PolynomialCutoff(cutoff, p=9)
+        elif cutoff_network == 'cosine':
+            self.cutoff_network = CosineCutoff(cutoff)
 
-        # Non-Directional
-    
-    def forward(self, a, rbf, distances, distance_vector, N, NM,
-               pairProperty, pairPropertyLatent):
-        return a, pairProperty, pairPropertyLatent
+    def forward(self, msij):
+        pij = self.phi_p(msij) # B,A,N
+        return pij
