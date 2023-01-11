@@ -152,7 +152,7 @@ class NewtonNet(nn.Module):
         # Optional Atomic Pair Property prediction
         self.pair_properties = pair_properties
         if pair_properties:
-            self.pair_property = PairProperty(n_features, resolution, activation, cutoff, cutoff_network)
+            self.pair_property = PairProperty(n_features, activation)
 
         self.aggregation = aggregation
 
@@ -443,7 +443,7 @@ class AtomicProperty(nn.Module):
         return self.environment(a)
 
 class PairProperty(nn.Module):
-    def __init__(self, n_features, resolution, activation, cutoff, cutoff_network):
+    def __init__(self, n_features, activation):
         super(PairProperty, self).__init__()
         # a, (B, A, nf)
         # pair_property, (B, A, A)
@@ -452,11 +452,6 @@ class PairProperty(nn.Module):
             Dense(128, 64, activation=activation, bias=False),
             Dense(64, 1, activation=activation, bias=False),
         )
-        # cutoff layer used in interaction block
-        if cutoff_network == 'poly':
-            self.cutoff_network = PolynomialCutoff(cutoff, p=9)
-        elif cutoff_network == 'cosine':
-            self.cutoff_network = CosineCutoff(cutoff)
 
     def forward(self, msij):
         pij = self.phi_p(msij) # B,A,N
