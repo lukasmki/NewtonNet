@@ -10,4 +10,4 @@ class TestAtomicProperty(unittest.TestCase):
         pred = m(x)
 
 if (__name__=="__main__"):
-    unittest.main()        
+    unittest.main()

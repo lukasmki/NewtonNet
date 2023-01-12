@@ -1,2 +1,2 @@
-
-from tests.test_newtonnet_pred import *
+from tests.test_newtonnet import *
+from tests.test_neighbors import *
