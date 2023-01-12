@@ -220,7 +220,8 @@ class NewtonNet(nn.Module):
             output['Ai'] = Ai
         
         if self.pair_properties:
-            Pij = self.pair_property(msij)
+            Pij = self.pair_property(msij) # B,A,N
+            # TODO: Expand Pij to B,A,A
             output['Pij'] = Pij
 
         Ei = self.atomic_energy(a)

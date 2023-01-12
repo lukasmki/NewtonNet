@@ -17,29 +17,28 @@ class BatchDataset(Dataset):
     def __init__(self, input, device):
 
         self.R = torch.tensor(input['R'],
-                                  device=device,
-                                  # dtype=torch.float64
-                              )
+                                # dtype=torch.float64,
+                                device=device)
 
         self.Z = torch.tensor(input['Z'],
-                                           dtype=torch.long,
-                                           device=device)
+                                dtype=torch.long,
+                                device=device)
         self.E = torch.tensor(input['E'],
-                                   # dtype=torch.float64,
-                                   device=device)
+                                # dtype=torch.float64,
+                                device=device)
         self.F = torch.tensor(input['F'],
-                                   # dtype=torch.float64,
-                                   device=device)
+                                # dtype=torch.float64,
+                                device=device)
         self.AM = torch.tensor(input['AM'],
                                 dtype=torch.long,
                                 device=device)
         if 'NM' in input and input['NM'] is not None:
             self.N = torch.tensor(input['N'],
-                                   dtype=torch.long,
-                                   device=device)
+                                    dtype=torch.long,
+                                    device=device)
             self.NM = torch.tensor(input['NM'],
-                                   dtype=torch.long,
-                                   device=device)
+                                    dtype=torch.long,
+                                    device=device)
 
         # rotation matrix
         self.RM = None
