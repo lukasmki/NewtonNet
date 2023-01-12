@@ -1,0 +1,83 @@
+#! /usr/bin/env python
+
+import os
+import argparse
+
+import torch
+from torch.optim import Adam
+import yaml
+
+from newtonnet.layers.activations import get_activation_by_string
+from newtonnet.models import NewtonNet
+
+from newtonnet.train import Trainer
+from newtonnet.data import parse_train_test
+from newtonnet.data import parse_ani_data
+from newtonnet.data import parse_methane_data
+
+# torch.autograd.set_detect_anomaly(True)
+torch.set_default_tensor_type(torch.DoubleTensor)
+
+# argument parser description
+argparser = argparse.ArgumentParser(
+    description=
+    'This is a pacakge to train NewtonNet on a given data.'
+)
+argparser.add_argument(
+    '-m',
+    "--model",
+    type=str,
+    required=True,
+    help="The path to the saved model (.pt file).")
+
+argparser.add_argument(
+    '-p',
+    "--parser",
+    type=str,
+    required=False,
+    default='ccsd',
+    help="The name of dataset to select the appropriate parser. We provide data parsers for 'md17', 'ccsd', 'ani', 'hydrogen' and 'methane' data sets."\
+         "For all other data sets do not specify.")
+
+
+# define arguments
+args = argparser.parse_args()
+config = args.config
+model_path = args.model
+parser = args.parser
+
+# settings
+settings_path = config
+settings = yaml.safe_load(open(settings_path, "r"))
+
+# device
+if type(settings['general']['device']) is list:
+    device = [torch.device(item) for item in settings['general']['device']]
+else:
+    device = [torch.device(settings['general']['device'])]
+
+# data
+if parser in ['md17', 'ccsd']:
+    train_gen, val_gen, test_gen, tr_steps, val_steps, test_steps, normalizer = parse_train_test(settings,device[0])
+    train_mode = 'energy/force'
+    print('data set:', 'one of md17 data sets or a generic one.')
+elif parser in ['ani']:
+    train_gen, val_gen, test_gen, tr_steps, val_steps, test_steps, n_train_data, n_val_data, n_test_data, normalizer, test_energy_hash = parse_ani_data(
+        settings, device[0])
+    train_mode = 'energy'
+    print('data set:', 'ANI')
+elif parser in ['methane']:
+    train_gen, val_gen, test_gen, tr_steps, val_steps, test_steps, n_train_data, n_val_data, n_test_data, normalizer, test_energy_hash = parse_methane_data(
+        settings, device[0])
+    train_mode = 'energy/force'
+    print('data set:', 'Methane Combustion')
+elif parser in ['hydrogen']:
+    train_gen, val_gen, test_gen, tr_steps, val_steps, test_steps, n_train_data, n_val_data, n_test_data, normalizer, test_energy_hash = parse_methane_data(
+        settings, device[0])
+    train_mode = 'energy/force'
+    print('data set:', 'Methane Combustion')
+
+
+# load pre-trained model
+model = NewtonNet()
+model.load_state_dict(torch.load(model_path)['model_state_dict'])
