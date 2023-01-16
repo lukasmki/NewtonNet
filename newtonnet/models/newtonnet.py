@@ -430,23 +430,14 @@ class DynamicsCalculator(nn.Module):
 class AtomicProperty(nn.Module):
     def __init__(self, n_features, activation, dropout):
         super(AtomicProperty, self).__init__()
-        self.environment = nn.Sequential(
-            Dense(n_features, 128,
-                  activation=activation,
-                  dropout=dropout,
-                  norm=False),
-            Dense(128, 64,
-                  activation=activation,
-                  dropout=dropout,
-                  norm=False),
-            Dense(64, 1,
-                  activation=None,
-                  dropout=0.0,
-                  norm=False),
+        self.phi_a = nn.Sequential(
+            Dense(n_features, 128, activation=activation, dropout=dropout, norm=False),
+            Dense(128, 64, activation=activation, dropout=dropout, norm=False),
+            Dense(64, 1,activation=None, dropout=0.0, norm=False),
         )
 
     def forward(self, a):
-        return self.environment(a)
+        return self.phi_a(a)
 
 class PairProperty(nn.Module):
     def __init__(self, n_features, activation):
