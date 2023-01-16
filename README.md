@@ -39,4 +39,4 @@ and consult with the docstrings in the code.
 
 To run the tests, simply run:
 
-    python -m unittest tests/
+    python -m unittest tests
