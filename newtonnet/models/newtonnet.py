@@ -221,7 +221,12 @@ class NewtonNet(nn.Module):
         
         if self.pair_properties:
             Pij = self.pair_property(msij) # B,A,N
-            # TODO: Expand Pij to B,A,A
+
+            # unmask neighbors
+            temp = torch.zeros(NM.shape) # B,A,A
+            temp[NM] = Pij.flatten() # B,A,A
+            Pij = temp
+            
             output['Pij'] = Pij
 
         Ei = self.atomic_energy(a)
@@ -446,8 +451,6 @@ class AtomicProperty(nn.Module):
 class PairProperty(nn.Module):
     def __init__(self, n_features, activation):
         super(PairProperty, self).__init__()
-        # a, (B, A, nf)
-        # pair_property, (B, A, A)
         self.phi_p = nn.Sequential(
             Dense(n_features, 128, activation=activation, bias=False),
             Dense(128, 64, activation=activation, bias=False),
