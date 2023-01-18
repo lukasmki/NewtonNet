@@ -46,7 +46,9 @@ model = NewtonNet(resolution=settings['model']['resolution'],
                return_latent=settings['model']['return_latent'],
                double_update_latent=settings['model']['double_update_latent'],
                layer_norm=settings['model']['layer_norm'],
-               aggregation=settings['model']['aggregation']
+               aggregation=settings['model']['aggregation'],
+               atomic_properties=settings['model']['atomic_properties'],
+               pair_properties=settings['model']['pair_properties']
                )
 
 # load pre-trained model
@@ -65,6 +67,12 @@ w_energy = settings['model']['w_energy']
 w_force = settings['model']['w_force']
 w_f_mag = settings['model']['w_f_mag']
 w_f_dir = settings['model']['w_f_dir']
+
+if settings['model']['atomic_properties']:
+    w_a = settings['model']['w_a']
+
+if settings['model']['pair_properties']:
+    w_p = settings['model']['w_p']
 
 def custom_loss(preds, batch_data, w_e=w_energy, w_f=w_force, w_fm=w_f_mag, w_fd=w_f_dir):
 
@@ -91,6 +99,16 @@ def custom_loss(preds, batch_data, w_e=w_energy, w_f=w_force, w_fm=w_f_mag, w_fd
         # direction_diff = direction_diff * torch.norm(batch_data["F"], p=2, dim=-1)
         direction_loss = torch.mean(direction_diff)
         err_sq = err_sq + w_fd * direction_loss
+    
+    # atomic and pair property
+    if w_a > 0:
+        diff_ai = preds['Ai'] - batch_data['Ai']
+        err_sq_ai = torch.mean(diff_ai**2)
+        err_sq = err_sq + w_a * err_sq_ai
+    if w_p > 0:
+        diff_pij = preds['Pij'] - batch_data['Pij']
+        err_sq_pij = torch.mean(diff_pij**2)
+        err_sq = err_sq + w_p * err_sq_pij
 
     if settings['checkpoint']['verbose']:
         print('\n',

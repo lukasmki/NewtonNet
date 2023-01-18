@@ -5,7 +5,7 @@ general:
   output: [output , 1]                          # path and iterator for the output directory
 
 data:
-  train_path: ./01_aimd.npz   # path to the training data
+  train_path: ./example_data.npz   # path to the training data
   test_path: False            # path to the test data
   cutoff: 5.0                 # cutoff radius
   train_size: 950             # training set size: to sample randomly
