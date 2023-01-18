@@ -427,7 +427,6 @@ class Trainer:
             outputs['F'] = 0
             outputs['total_ae'] = np.mean(outputs['E_ae'])
 
-
         return outputs
 
     def validation_atomic_properties(self, name, target_name, generator, steps):
@@ -557,8 +556,6 @@ class Trainer:
                 self.optimizer.zero_grad()
 
                 train_batch = next(train_generator)
-                # self.model.module(train_batch)
-                # preds = self.model.forward(train_batch)
                 preds = self.model(train_batch)
                 loss = self.loss_fn(preds, train_batch,
                                     w_e=self.energy_loss_w,

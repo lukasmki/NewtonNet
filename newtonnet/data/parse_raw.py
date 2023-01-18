@@ -728,7 +728,6 @@ def parse_train_test(settings, device, unit='kcal'):
     train_size = settings['data']['train_size']
     val_size = settings['data']['val_size']
 
-
     # read data
     data = np.load(train_path)
     test = None
@@ -741,10 +740,10 @@ def parse_train_test(settings, device, unit='kcal'):
 
     for key in list(data.keys()):
         # copy Z embarrassingly Todo: make it data efficient by flexible environment module
-        if key == 'z':
-            dtrain['Z'] = np.tile(data['z'], (data['E'].shape[0], 1))
+        if key == 'Z':
+            dtrain['Z'] = np.tile(data['Z'], (data['E'].shape[0], 1))
             if test is not None:
-                dtest['Z'] = np.tile(test['z'], (test['E'].shape[0], 1))
+                dtest['Z'] = np.tile(test['Z'], (test['E'].shape[0], 1))
 
         elif key == 'E':
             if data['E'].ndim == 1:
@@ -758,7 +757,7 @@ def parse_train_test(settings, device, unit='kcal'):
                 else:
                     dtest[key] = test[key]
 
-        elif key in ['R','F','Z']:
+        elif key in ['R','F','Z','Ai','Pij']:
             dtrain[key] = data[key]
             if test is not None:
                 dtest[key] = test[key]

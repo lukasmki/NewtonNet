@@ -136,6 +136,15 @@ def batch_dataset_converter(input, device):
 
     if "labels" in input:
         result["labels"] = input["labels"]
+
+    if "Ai" in input:
+        result["Ai"] = torch.tensor(input['Ai'],
+                                    dtype=torch.float32,
+                                    device=device)
+    if "Pij" in input:
+        result["Pij"] = torch.tensor(input["Pij"],
+                                     dtype=torch.float32,
+                                     device=device)
     return result
 
 
@@ -159,6 +168,8 @@ def extensive_train_loader(data,
             - 'Z':atomic_numbers
             - 'E':energy
             - 'F':forces
+            - 'Ai':Atomic Properties
+            - 'Pi':Pair Properties
 
     env_provider: ShellProvider
         the instance of combust.data.ExtensiveEnvironment or combust.data.PeriodicEnvironment

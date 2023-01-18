@@ -210,24 +210,18 @@ class NewtonNet(nn.Module):
         output = dict()
 
         if self.atomic_properties:
-            Ai = self.atomic_property(a)
-            if self.normalize_atomic:
-                Ai = self.inverse_normalize(Ai, Z)
-            else:
-                for atomic_type in self.inverse_normalize:
-                    atomic_filter = Z == int(atomic_type)
-                    Ai[atomic_filter] = self.inverse_normalize[atomic_type](Ai[atomic_filter])
-            output['Ai'] = Ai
+            Ai = self.atomic_property(a) # B,A,1
+            # if self.normalize_atomic:
+            #     Ai = self.inverse_normalize(Ai, Z)
+            # else:
+            #     for atomic_type in self.inverse_normalize:
+            #         atomic_filter = Z == int(atomic_type)
+            #         Ai[atomic_filter] = self.inverse_normalize[atomic_type](Ai[atomic_filter])
+            output['Ai'] = Ai.squeeze(-1) # B,A
         
         if self.pair_properties:
-            Pij = self.pair_property(msij) # B,A,N
-
-            # unmask neighbors
-            temp = torch.zeros(NM.shape) # B,A,A
-            temp[NM] = Pij.flatten() # B,A,A
-            Pij = temp
-            
-            output['Pij'] = Pij
+            Pij = self.pair_property(msij) # B,A,N,1
+            output['Pij'] = Pij.squeeze(-1) # B,A,N
 
         Ei = self.atomic_energy(a)
         if self.normalize_atomic:
