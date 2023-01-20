@@ -9,8 +9,6 @@ class TestExtensiveEnvironment(unittest.TestCase):
 
         env = ExtensiveEnvironment()
         neighbors, neighbor_mask, mask, distances, distance_vectors = env.get_environment(R, Z)
-        # print(R)
-        # print(neighbor_mask)
 
 
 

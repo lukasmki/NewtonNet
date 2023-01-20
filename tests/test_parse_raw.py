@@ -34,9 +34,9 @@ class TestParseTrainTest(unittest.TestCase):
     def test_parse_train_test(self):
         train_gen, val_gen, test_gen, tr_steps, val_steps, test_steps, normalizer = parse_train_test(self.settings, self.device)
         for batch in test_gen:
-            print(batch.keys(), [batch[k].shape for k in batch.keys()])
-            print(batch['NM'][0])
-            print(batch['AM'][0])
+            # print(batch.keys(), [batch[k].shape for k in batch.keys()])
+            # print(batch['NM'][0])
+            # print(batch['AM'][0])
             break
 
 if (__name__=="__main__"):

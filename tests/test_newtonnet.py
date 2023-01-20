@@ -20,18 +20,14 @@ class TestPairProperty(unittest.TestCase):
 class TestNewtonNet(unittest.TestCase):
     def test_forward(self):
         data = {
-            'Z' : torch.ones(12, 6, dtype=torch.long),
-            'R' : torch.rand(12, 6, 3),
-            'N' : torch.ones(12, 1) * 6,
-            'NM': torch.ones(12, 6, 5),
-            'AM': torch.ones(12, 6),
+            'Z' : torch.ones(10, 6, dtype=torch.long),
+            'R' : torch.rand(10, 6, 3),
+            'N' : torch.ones(10, 1) * 6,
+            'NM': torch.ones(10, 6, 5),
+            'AM': torch.ones(10, 6),
         }
-
         m = NewtonNet(20, 128, torch.sigmoid, atomic_properties=True, pair_properties=True)
         result = m.forward(data)
-
-        print(result.keys())
-        
 
 
 if (__name__=="__main__"):
