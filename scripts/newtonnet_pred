@@ -2,18 +2,11 @@
 
 import os
 import argparse
-
+import numpy as np
 import torch
-from torch.optim import Adam
-import yaml
 
-from newtonnet.layers.activations import get_activation_by_string
-from newtonnet.models import NewtonNet
-
-from newtonnet.train import Trainer
-from newtonnet.data import parse_train_test
-from newtonnet.data import parse_ani_data
-from newtonnet.data import parse_methane_data
+from newtonnet.data.neighbors import ExtensiveEnvironment
+from newtonnet.data.loader import extensive_train_loader
 
 # torch.autograd.set_detect_anomaly(True)
 torch.set_default_tensor_type(torch.DoubleTensor)
@@ -21,7 +14,7 @@ torch.set_default_tensor_type(torch.DoubleTensor)
 # argument parser description
 argparser = argparse.ArgumentParser(
     description=
-    'This is a pacakge to train NewtonNet on a given data.'
+    'This is a pacakge to run NewtonNet on a given data.'
 )
 argparser.add_argument(
     '-m',
@@ -31,53 +24,75 @@ argparser.add_argument(
     help="The path to the saved model (.pt file).")
 
 argparser.add_argument(
-    '-p',
-    "--parser",
+    '-i',
+    '--input',
+    type=str,
+    required=True,
+    help='Path to .npz formatted input data.'
+)
+
+argparser.add_argument(
+    '-o',
+    '--output',
     type=str,
     required=False,
-    default='ccsd',
-    help="The name of dataset to select the appropriate parser. We provide data parsers for 'md17', 'ccsd', 'ani', 'hydrogen' and 'methane' data sets."\
-         "For all other data sets do not specify.")
+    default='output.npz',
+    help='Path to .npz formatted output data.'
+)
 
+argparser.add_argument(
+    '-d',
+    '--device',
+    type=str,
+    required=False,
+    default='cpu',
+    help='Torch.device string.'
+)
 
 # define arguments
 args = argparser.parse_args()
-config = args.config
-model_path = args.model
-parser = args.parser
+infile = args.input
+outfile = args.output
 
-# settings
-settings_path = config
-settings = yaml.safe_load(open(settings_path, "r"))
+model_path = args.model
 
 # device
-if type(settings['general']['device']) is list:
-    device = [torch.device(item) for item in settings['general']['device']]
+if len(args.device.split(",")) > 1:
+    device = [torch.device(item) for item in args.device.split(",")]
 else:
-    device = [torch.device(settings['general']['device'])]
+    device = [torch.device(args.device)]
 
 # data
-if parser in ['md17', 'ccsd']:
-    train_gen, val_gen, test_gen, tr_steps, val_steps, test_steps, normalizer = parse_train_test(settings,device[0])
-    train_mode = 'energy/force'
-    print('data set:', 'one of md17 data sets or a generic one.')
-elif parser in ['ani']:
-    train_gen, val_gen, test_gen, tr_steps, val_steps, test_steps, n_train_data, n_val_data, n_test_data, normalizer, test_energy_hash = parse_ani_data(
-        settings, device[0])
-    train_mode = 'energy'
-    print('data set:', 'ANI')
-elif parser in ['methane']:
-    train_gen, val_gen, test_gen, tr_steps, val_steps, test_steps, n_train_data, n_val_data, n_test_data, normalizer, test_energy_hash = parse_methane_data(
-        settings, device[0])
-    train_mode = 'energy/force'
-    print('data set:', 'Methane Combustion')
-elif parser in ['hydrogen']:
-    train_gen, val_gen, test_gen, tr_steps, val_steps, test_steps, n_train_data, n_val_data, n_test_data, normalizer, test_energy_hash = parse_methane_data(
-        settings, device[0])
-    train_mode = 'energy/force'
-    print('data set:', 'Methane Combustion')
+data = dict(np.load(infile))
+data = {'R': data['R'], 'Z': data['Z'], 'N': data['N']}
+num_frames = data['R'].shape[0]
 
+batch_gen = extensive_train_loader(data,
+                env_provider=ExtensiveEnvironment(),
+                batch_size=100,
+                shuffle=False,
+                drop_last=False)
+
+num_frames //= 100
 
 # load pre-trained model
-model = NewtonNet()
-model.load_state_dict(torch.load(model_path)['model_state_dict'])
+model = torch.load(model_path)
+
+output = dict()
+for s in range(num_frames):
+    batch_data = next(batch_gen)
+    result = model.forward(batch_data)
+    for k,v in result.items():
+        if k == 'hs':
+            continue
+
+        val = v.detach().cpu().numpy()
+            
+        if k not in output:
+            output[k] = val
+        else:
+            output[k] = np.concatenate((output[k], val), axis=0)
+    
+    print(f"\r{(s+1)/num_frames * 100:0.2f}%, {s+1}/{num_frames}", end='\r')
+
+np.savez_compressed(outfile, **output)
