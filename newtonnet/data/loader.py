@@ -167,9 +167,9 @@ def extensive_train_loader(data,
             - 'R':positions
             - 'Z':atomic_numbers
             - 'E':energy
-            - 'F':forces
-            - 'Ai':Atomic Properties
-            - 'Pi':Pair Properties
+            - 'F':forces (optional)
+            - 'Ai':Atomic Properties (optional)
+            - 'Pi':Pair Properties (optional)
 
     env_provider: ShellProvider
         the instance of combust.data.ExtensiveEnvironment or combust.data.PeriodicEnvironment
