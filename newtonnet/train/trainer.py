@@ -94,15 +94,22 @@ class Trainer:
                 'test_E(MAE)': [],
                 'test_F(MAE)': []
             })
-        elif mode == "atomic_properties":
+        
+        if self.model.atomic_properties:
             self.log_loss.update({
-                "tr_err(RMSE)": [],
-                "val_err(RMSE)": [],
-                "test_err(RMSE)": []
+                "tr_Ai(RMSE)": [],
+                # "val_Ai(RMSE)": [],
+                # "test_Ai(RMSE)": []
             })
+        if self.model.pair_properties:
+            self.log_loss.update({
+                "tr_Pij(RMSE)": [],
+                # "val_Pij(RMSE)": [],
+                # "test_Pij(RMSE)": []
+            })
+        
         self.best_val_loss = float("inf")
         self.mode = mode
-        self.target_name = target_name
         self.force_latent = force_latent
 
     def _handle_scheduler(self, lr_scheduler, optimizer):
@@ -542,7 +549,10 @@ class Trainer:
             running_loss = 0.0
             ae_energy = 0.0
             ae_force = 0.0
-            rmse_ai = []
+            if self.model.atomic_properties:
+                rmse_ai = 0.0
+            if self.model.pair_properties:
+                rmse_pij = 0.0
             n_data = 0
             n_atoms = 0
             self.model.train()
@@ -587,8 +597,6 @@ class Trainer:
                         actual_ae_f = self.masked_average(ae_f, atom_mask)
                         ae_force += np.sum(actual_ae_f)
                     n_data += train_batch["E"].size()[0]
-                    
-                # n_atoms = train_batch.R.size()[1]
 
                     if self.verbose:
                         print(
@@ -598,33 +606,27 @@ class Trainer:
                             (ae_energy / (n_data)),
                             (ae_force / (n_atoms*3))
                             ))
-                elif self.mode == "atomic_properties":
-                    target_name = 'Ai'
-                    if self.target_name is not None:
-                        target_name = self.target_name
-                    rmse_ai.append(np.mean(self.metric_rmse(
-                        preds[target_name].detach().cpu().numpy(),
-                        train_batch["CS"].detach().cpu().numpy(),
-                        train_batch["M"].detach().cpu().numpy()
-                    )))
-
-                    n_data += train_batch["CS"].size()[0]
-
-                    if self.verbose:
-                        print(
-                            "Train: Epoch %i/%i - %i/%i - loss: %.5f - running_loss(RMSE): %.5f - RMSE: %.5f"
-                            % (self.epoch, epochs, s, steps, current_loss,
-                            np.sqrt(running_loss / (s + 1)),
-                            (np.mean(rmse_ai[-100:]))
-                            ))
+                if self.model.atomic_properties:
+                    rmse_ai += np.mean(self.metric_rmse(
+                        preds['Ai'].detach().cpu().numpy(),
+                        train_batch['Ai'].detach().cpu().numpy(),
+                        train_batch['AM'].detach().cpu().numpy()
+                    ))
+                if self.model.pair_properties:
+                    rmse_pij += np.mean(self.metric_rmse(
+                        preds['Pij'].detach().cpu().numpy(),
+                        train_batch['Pij'].detach().cpu().numpy(),
+                    ))
                 del train_batch
 
             running_loss /= steps
             if self.mode in ["energy/force", "energy"]:
                 ae_energy /= n_data
                 ae_force /= (n_atoms * 3)
-            elif self.mode == "atomic_properties":
-                rmse_ai = np.mean(rmse_ai[-100:])
+            if self.model.atomic_properties:
+                rmse_ai /= n_data
+            if self.model.pair_properties:
+                rmse_pij /= n_data
 
             # plots
             self.plot_grad_flow()
@@ -728,30 +730,35 @@ class Trainer:
                 for i, param_group in enumerate(
                         self.scheduler.optimizer.param_groups):
                     old_lr = float(param_group["lr"])
+                
+                chk = {
+                    "loss(MSE)": running_loss,
+                    'tr_E(MAE)': ae_energy,
+                    'tr_F(MAE)': ae_force,
+                    'val_E(MAE)': val_mae_E,
+                    'val_F(MAE)': val_mae_F,
+                    'irc_E(MAE)': irc_mae_E,
+                    'irc_F(MAE)': irc_mae_F,
+                    'test_E(MAE)': test_mae_E,
+                    'test_F(MAE)': test_mae_F,
+                    "lr": old_lr,
+                    "time": time.time() - t0
+                }
 
-                if self.mode in ["energy/force", "energy"]:
-                    self.store_checkpoint({
-                        "loss(MSE)": running_loss,
-                        'tr_E(MAE)': ae_energy,
-                        'tr_F(MAE)': ae_force,
-                        'val_E(MAE)': val_mae_E,
-                        'val_F(MAE)': val_mae_F,
-                        'irc_E(MAE)': irc_mae_E,
-                        'irc_F(MAE)': irc_mae_F,
-                        'test_E(MAE)': test_mae_E,
-                        'test_F(MAE)': test_mae_F,
-                        "lr": old_lr,
-                        "time": time.time() - t0},
-                        steps)
-                elif self.mode == "atomic_properties":
-                    self.store_checkpoint({
-                        "loss(MSE)": running_loss,
-                        "tr_err(RMSE)": rmse_ai,
-                        "val_err(RMSE)": val_error,
-                        "test_err(RMSE)": test_error,
-                        "lr": old_lr,
-                        "time": time.time() - t0
-                    }, steps)
+                if self.model.atomic_properties:
+                    chk.update({
+                        "tr_Ai(RMSE)": rmse_ai,
+                        # "val_Ai(RMSE)": val_rmse_ai,
+                        # "test_Ai(RMSE)": test_rmse_ai,
+                    })
+                if self.model.pair_properties:
+                    chk.update({
+                        "tr_Pij(RMSE)": rmse_pij,
+                        # "val_Pij(RMSE)": val_rmse_pij,
+                        # "test_Pij(RMSE)": test_rmse_pij,
+                    })
+
+                self.store_checkpoint(chk, steps)
 
     def log_statistics(self, n_train_data, n_val_data, n_test_data, normalizer, test_energy_hash):
         with open(os.path.join(self.output_path, "stats.txt"), "w") as f:
