@@ -95,18 +95,18 @@ class Trainer:
                 'test_F(MAE)': []
             })
         
-        if self.model.atomic_properties:
-            self.log_loss.update({
-                "tr_Ai(RMSE)": [],
-                # "val_Ai(RMSE)": [],
-                # "test_Ai(RMSE)": []
-            })
-        if self.model.pair_properties:
-            self.log_loss.update({
-                "tr_Pij(RMSE)": [],
-                # "val_Pij(RMSE)": [],
-                # "test_Pij(RMSE)": []
-            })
+        # if self.model.atomic_properties:
+        #     self.log_loss.update({
+        #         "tr_Ai(RMSE)": [],
+        #         # "val_Ai(RMSE)": [],
+        #         # "test_Ai(RMSE)": []
+        #     })
+        # if self.model.pair_properties:
+        #     self.log_loss.update({
+        #         "tr_Pij(RMSE)": [],
+        #         # "val_Pij(RMSE)": [],
+        #         # "test_Pij(RMSE)": []
+        #     })
         
         self.best_val_loss = float("inf")
         self.mode = mode
@@ -167,7 +167,6 @@ class Trainer:
 
         if len(hooks_list) > 0:
             self.hooks = hooks_list
-
 
     def print_layers(self):
         total_n_params = 0
@@ -549,10 +548,10 @@ class Trainer:
             running_loss = 0.0
             ae_energy = 0.0
             ae_force = 0.0
-            if self.model.atomic_properties:
-                rmse_ai = 0.0
-            if self.model.pair_properties:
-                rmse_pij = 0.0
+            # if self.model.atomic_properties:
+            #     rmse_ai = 0.0
+            # if self.model.pair_properties:
+            #     rmse_pij = 0.0
             n_data = 0
             n_atoms = 0
             self.model.train()
@@ -606,27 +605,27 @@ class Trainer:
                             (ae_energy / (n_data)),
                             (ae_force / (n_atoms*3))
                             ))
-                if self.model.atomic_properties:
-                    rmse_ai += np.mean(self.metric_rmse(
-                        preds['Ai'].detach().cpu().numpy(),
-                        train_batch['Ai'].detach().cpu().numpy(),
-                        train_batch['AM'].detach().cpu().numpy()
-                    ))
-                if self.model.pair_properties:
-                    rmse_pij += np.mean(self.metric_rmse(
-                        preds['Pij'].detach().cpu().numpy(),
-                        train_batch['Pij'].detach().cpu().numpy(),
-                    ))
+                # if self.model.atomic_properties:
+                #     rmse_ai += np.mean(self.metric_rmse(
+                #         preds['Ai'].detach().cpu().numpy(),
+                #         train_batch['Ai'].detach().cpu().numpy(),
+                #         train_batch['AM'].detach().cpu().numpy()
+                #     ))
+                # if self.model.pair_properties:
+                #     rmse_pij += np.mean(self.metric_rmse(
+                #         preds['Pij'].detach().cpu().numpy(),
+                #         train_batch['Pij'].detach().cpu().numpy(),
+                #     ))
                 del train_batch
 
             running_loss /= steps
             if self.mode in ["energy/force", "energy"]:
                 ae_energy /= n_data
                 ae_force /= (n_atoms * 3)
-            if self.model.atomic_properties:
-                rmse_ai /= n_data
-            if self.model.pair_properties:
-                rmse_pij /= n_data
+            # if self.model.atomic_properties:
+            #     rmse_ai /= n_data
+            # if self.model.pair_properties:
+            #     rmse_pij /= n_data
 
             # plots
             self.plot_grad_flow()
@@ -745,18 +744,18 @@ class Trainer:
                     "time": time.time() - t0
                 }
 
-                if self.model.atomic_properties:
-                    chk.update({
-                        "tr_Ai(RMSE)": rmse_ai,
-                        # "val_Ai(RMSE)": val_rmse_ai,
-                        # "test_Ai(RMSE)": test_rmse_ai,
-                    })
-                if self.model.pair_properties:
-                    chk.update({
-                        "tr_Pij(RMSE)": rmse_pij,
-                        # "val_Pij(RMSE)": val_rmse_pij,
-                        # "test_Pij(RMSE)": test_rmse_pij,
-                    })
+                # if self.model.atomic_properties:
+                #     chk.update({
+                #         "tr_Ai(RMSE)": rmse_ai,
+                #         # "val_Ai(RMSE)": val_rmse_ai,
+                #         # "test_Ai(RMSE)": test_rmse_ai,
+                #     })
+                # if self.model.pair_properties:
+                #     chk.update({
+                #         "tr_Pij(RMSE)": rmse_pij,
+                #         # "val_Pij(RMSE)": val_rmse_pij,
+                #         # "test_Pij(RMSE)": test_rmse_pij,
+                #     })
 
                 self.store_checkpoint(chk, steps)
 
