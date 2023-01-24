@@ -77,17 +77,25 @@ num_frames //= 100
 
 # load pre-trained model
 model = torch.load(model_path)
+model.eval()
 
+# evaluate model
 output = dict()
 for s in range(num_frames):
     batch_data = next(batch_gen)
+
+    for k in ['R', 'Z', 'N']:
+        val = batch_data[k].detach().cpu().numpy()
+        if k not in output:
+            output[k] = val
+        else:
+            output[k] = np.concatenate((output[k], val), axis=0)
+
     result = model.forward(batch_data)
     for k,v in result.items():
         if k == 'hs':
             continue
-
         val = v.detach().cpu().numpy()
-            
         if k not in output:
             output[k] = val
         else:
