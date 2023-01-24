@@ -34,7 +34,7 @@ model = NewtonNet(resolution=settings['model']['resolution'],
                activation=activation,
                n_interactions=settings['model']['n_interactions'],
                dropout=settings['training']['dropout'],
-               max_z=10,
+               max_z=settings['model']['max_z'],
                cutoff=settings['data']['cutoff'],  ## data cutoff
                cutoff_network=settings['model']['cutoff_network'],
                normalizer=normalizer,
@@ -68,11 +68,8 @@ w_force = settings['model']['w_force']
 w_f_mag = settings['model']['w_f_mag']
 w_f_dir = settings['model']['w_f_dir']
 
-if settings['model']['atomic_properties']:
-    w_a = settings['model']['w_a']
-
-if settings['model']['pair_properties']:
-    w_p = settings['model']['w_p']
+w_a = settings['model']['w_a'] if settings['model']['atomic_properties'] else 0.0
+w_p = settings['model']['w_p'] if settings['model']['pair_properties'] else 0.0
 
 def custom_loss(preds, batch_data, w_e=w_energy, w_f=w_force, w_fm=w_f_mag, w_fd=w_f_dir):
 
@@ -105,6 +102,7 @@ def custom_loss(preds, batch_data, w_e=w_energy, w_f=w_force, w_fm=w_f_mag, w_fd
         diff_ai = preds['Ai'] - batch_data['Ai']
         err_sq_ai = torch.mean(diff_ai**2)
         err_sq = err_sq + w_a * err_sq_ai
+    
     if w_p > 0:
         diff_pij = preds['Pij'] - batch_data['Pij']
         err_sq_pij = torch.mean(diff_pij**2)
@@ -120,6 +118,11 @@ def custom_loss(preds, batch_data, w_e=w_energy, w_f=w_force, w_fm=w_f_mag, w_fd
 
         if w_fd>0:
             print(' '*8, 'direction loss: ', direction_loss.detach().cpu().numpy())
+        
+        if w_a>0:
+            print(' '*8, 'atomic loss: ', err_sq_ai.detach().cpu().numpy(), '\n')
+        if w_p>0:
+            print(' '*8, 'atomic loss: ', err_sq_pij.detach().cpu().numpy(), '\n')
 
     return err_sq
 
@@ -134,7 +137,7 @@ trainer = Trainer(model=model,
                   output_path=settings['general']['output'],
                   script_name=settings['general']['driver'],
                   lr_scheduler=settings['training']['lr_scheduler'],
-                  energy_loss_w= w_energy,
+                  energy_loss_w=w_energy,
                   force_loss_w=w_force,
                   loss_wf_decay=settings['model']['wf_decay'],
                   checkpoint_log=settings['checkpoint']['log'],
@@ -146,8 +149,6 @@ trainer = Trainer(model=model,
                   mode='energy/force')
 
 trainer.print_layers()
-
-# tr_steps=1; val_steps=0; irc_steps=0; test_steps=0
 
 trainer.train(train_generator=train_gen,
               epochs=settings['training']['epochs'],
