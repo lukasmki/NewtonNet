@@ -16,22 +16,14 @@ class BatchRenorm(torch.nn.Module):
         momentum: float = 0.01,
         affine: bool = True,
     ):
-        super(BatchRenorm,self).__init__()
+        super(BatchRenorm, self).__init__()
         self.register_buffer(
             "running_mean", torch.zeros(num_features, dtype=torch.float)
         )
-        self.register_buffer(
-            "running_std", torch.ones(num_features, dtype=torch.float)
-        )
-        self.register_buffer(
-            "num_batches_tracked", torch.tensor(0, dtype=torch.long)
-        )
-        self.weight = torch.nn.Parameter(
-            torch.ones(num_features, dtype=torch.float)
-        )
-        self.bias = torch.nn.Parameter(
-            torch.zeros(num_features, dtype=torch.float)
-        )
+        self.register_buffer("running_std", torch.ones(num_features, dtype=torch.float))
+        self.register_buffer("num_batches_tracked", torch.tensor(0, dtype=torch.long))
+        self.weight = torch.nn.Parameter(torch.ones(num_features, dtype=torch.float))
+        self.bias = torch.nn.Parameter(torch.zeros(num_features, dtype=torch.float))
         self.affine = affine
         self.eps = eps
         self.step = 0
@@ -42,15 +34,11 @@ class BatchRenorm(torch.nn.Module):
 
     @property
     def rmax(self) -> torch.Tensor:
-        return (2 / 35000 * self.num_batches_tracked + 25 / 35).clamp_(
-            1.0, 3.0
-        )
+        return (2 / 35000 * self.num_batches_tracked + 25 / 35).clamp_(1.0, 3.0)
 
     @property
     def dmax(self) -> torch.Tensor:
-        return (5 / 20000 * self.num_batches_tracked - 25 / 20).clamp_(
-            0.0, 5.0
-        )
+        return (5 / 20000 * self.num_batches_tracked - 25 / 20).clamp_(0.0, 5.0)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         self._check_input_dim(x)
@@ -60,9 +48,9 @@ class BatchRenorm(torch.nn.Module):
             dims = [i for i in range(x.dim() - 1)]
             batch_mean = x.mean(dims)
             batch_std = x.std(dims, unbiased=False) + self.eps
-            r = (
-                batch_std.detach() / self.running_std.view_as(batch_std)
-            ).clamp_(1 / self.rmax, self.rmax)
+            r = (batch_std.detach() / self.running_std.view_as(batch_std)).clamp_(
+                1 / self.rmax, self.rmax
+            )
             d = (
                 (batch_mean.detach() - self.running_mean.view_as(batch_mean))
                 / self.running_std.view_as(batch_std)
@@ -71,9 +59,7 @@ class BatchRenorm(torch.nn.Module):
             self.running_mean += self.momentum * (
                 batch_mean.detach() - self.running_mean
             )
-            self.running_std += self.momentum * (
-                batch_std.detach() - self.running_std
-            )
+            self.running_std += self.momentum * (batch_std.detach() - self.running_std)
             self.num_batches_tracked += 1
         else:
             x = (x - self.running_mean) / self.running_std

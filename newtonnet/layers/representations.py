@@ -13,12 +13,13 @@ class RadialBesselLayer(nn.Module):
 
     """
 
-    def __init__(
-        self, n_radial=16, cutoff=5.0, device=None
-    ):
+    def __init__(self, n_radial=16, cutoff=5.0, device=None):
         super(RadialBesselLayer, self).__init__()
-        self.inv_cutoff = 1/cutoff
-        self.frequencies = nn.Parameter(torch.tensor(np.arange(1,n_radial+1) * np.pi, device=device), requires_grad=False)
+        self.inv_cutoff = 1 / cutoff
+        self.frequencies = nn.Parameter(
+            torch.tensor(np.arange(1, n_radial + 1) * np.pi, device=device),
+            requires_grad=False,
+        )
 
     def forward(self, distances):
         """Compute smeared-gaussian distance values.

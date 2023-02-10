@@ -6,14 +6,14 @@ import numpy as np
 def get_activation_by_string(key):
     if key == "swish":
         activation = swish
-    elif key == 'relu':
+    elif key == "relu":
         activation = nn.ReLU()
-    elif key == 'ssp':
+    elif key == "ssp":
         activation = shifted_softplus
-    elif key == 'gelu':
+    elif key == "gelu":
         activation = gelu
     else:
-        raise NotImplementedError("The activation function '%s' is unknown."%str(key))
+        raise NotImplementedError("The activation function '%s' is unknown." % str(key))
     return activation
 
 
@@ -63,4 +63,4 @@ def gelu(x):
         torch.Tensor: Swish activation of input.
 
     """
-    return x * torch.sigmoid(1.702*x)
+    return x * torch.sigmoid(1.702 * x)

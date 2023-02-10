@@ -20,6 +20,7 @@ class ScaleShift(nn.Module):
 
     Copyright: https://github.com/atomistic-machine-learning/schnetpack/blob/master/src/schnetpack/nn/base.py
     """
+
     def __init__(self, mean, stddev):
         super(ScaleShift, self).__init__()
         self.register_buffer("mean", mean)
@@ -58,6 +59,7 @@ class TrainableScaleShift(nn.Module):
         standard deviation value :math:`\sigma`.
 
     """
+
     def __init__(self, max_z, initial_mean=None, initial_stddev=None):
         super(TrainableScaleShift, self).__init__()
         if initial_mean is not None:
@@ -65,12 +67,13 @@ class TrainableScaleShift(nn.Module):
         else:
             mean = nn.Parameter(torch.zeros(max_z), requires_grad=True)
         if initial_stddev is not None:
-            stddev = nn.Parameter(torch.ones(max_z) * initial_stddev, requires_grad=True)
+            stddev = nn.Parameter(
+                torch.ones(max_z) * initial_stddev, requires_grad=True
+            )
         else:
             stddev = nn.Parameter(torch.ones(max_z), requires_grad=True)
-        self.register_parameter('mean', mean)
-        self.register_parameter('stddev', stddev)
-
+        self.register_parameter("mean", mean)
+        self.register_parameter("stddev", stddev)
 
     def forward(self, input_energies, z):
         """Compute layer output.
@@ -88,7 +91,7 @@ class TrainableScaleShift(nn.Module):
         torch.Tensor: layer output.
 
         """
-        selected_mean = self.mean[z][...,None]
-        selected_stddev = self.stddev[z][...,None]
+        selected_mean = self.mean[z][..., None]
+        selected_stddev = self.stddev[z][..., None]
         y = input_energies * selected_stddev + selected_mean
         return y

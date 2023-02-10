@@ -15,6 +15,7 @@ class PolynomialCutoff(nn.Module):
     cutoff (float, optional): cutoff radius.
 
     """
+
     def __init__(self, cutoff=5.0, p=9):
         super(PolynomialCutoff, self).__init__()
         self.register_buffer("cutoff", torch.FloatTensor([cutoff]))
@@ -33,7 +34,12 @@ class PolynomialCutoff(nn.Module):
         d = distances / self.cutoff
 
         # Compute values of cutoff function
-        cutoffs = 1 - 0.5*(self.p+1)*(self.p+2)*d.pow(self.p) + self.p*(self.p+2)*d.pow(self.p+1) - 0.5*self.p*(self.p+1)*d.pow(self.p+2)
+        cutoffs = (
+            1
+            - 0.5 * (self.p + 1) * (self.p + 2) * d.pow(self.p)
+            + self.p * (self.p + 2) * d.pow(self.p + 1)
+            - 0.5 * self.p * (self.p + 1) * d.pow(self.p + 2)
+        )
 
         # Remove contributions beyond the cutoff radius
         cutoffs *= (distances < self.cutoff).float()
@@ -57,6 +63,7 @@ class CosineCutoff(nn.Module):
         cutoff (float, optional): cutoff radius.
 
     """
+
     def __init__(self, cutoff=5.0):
         super(CosineCutoff, self).__init__()
         self.register_buffer("cutoff", torch.FloatTensor([cutoff]))

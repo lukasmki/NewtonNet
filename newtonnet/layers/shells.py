@@ -14,11 +14,8 @@ class ShellProvider(nn.Module):
     ----------
 
     """
-    def __init__(self,
-                 return_vecs=False,
-                 normalize_vecs=False,
-                 pbc=False,
-                 cutoff=None):
+
+    def __init__(self, return_vecs=False, normalize_vecs=False, pbc=False, cutoff=None):
         super(ShellProvider, self).__init__()
         self.return_vecs = return_vecs
         self.normalize_vecs = normalize_vecs
@@ -26,11 +23,7 @@ class ShellProvider(nn.Module):
         self.pbc = pbc
         self.cutoff = cutoff
 
-    def forward(self,
-                atoms,
-                neighbors,
-                neighbor_mask=None,
-                lattice=None):
+    def forward(self, atoms, neighbors, neighbor_mask=None, lattice=None):
         """
         The main driver to calculate distances of atoms in a shell from center atom.
 
@@ -67,9 +60,7 @@ class ShellProvider(nn.Module):
         """
         # Construct auxiliary index vector
         B, A, _ = atoms.size()
-        idx_m = torch.arange(B, device=atoms.device, dtype=torch.long)[
-                :, None, None
-                ]
+        idx_m = torch.arange(B, device=atoms.device, dtype=torch.long)[:, None, None]
 
         # Get atomic positions of all neighboring indices
         ngh_atoms_xyz = atoms[idx_m, neighbors[:, :, :], :]
@@ -77,27 +68,41 @@ class ShellProvider(nn.Module):
         # Subtract positions of central atoms to get distance vectors
         distance_vector = ngh_atoms_xyz - atoms[:, :, None, :]
 
-
         # pbc: for distance in a direction (d) and boxlength (L), d = (d + L/2) % L - L/2
         if self.pbc:
-            lattice_shift_arr = torch.tensor([[i, j, k] for i in [-1, 0, 1] for j in [-1, 0, 1] for k in [-1, 0, 1]],
-                                             dtype=lattice.dtype,
-                                             device=lattice.device)  # 27 x 3
-            lattice_batchlast = lattice.view((-1, 3, 3)).moveaxis(0, 2) # 3 x 3 x B
-            distance_shift_arr = torch.tensordot(lattice_shift_arr, lattice_batchlast, 1).moveaxis(2, 1) # 27 x B x 3
-            distance_vector_pbc = distance_vector[None] + distance_shift_arr[:, :, None, None] # 27 x B x A x N x 3
-            distance_vector = distance_vector_pbc.moveaxis(0, -2).flatten(start_dim=2, end_dim=3) # B x A x N*27 x 3
+            lattice_shift_arr = torch.tensor(
+                [[i, j, k] for i in [-1, 0, 1] for j in [-1, 0, 1] for k in [-1, 0, 1]],
+                dtype=lattice.dtype,
+                device=lattice.device,
+            )  # 27 x 3
+            lattice_batchlast = lattice.view((-1, 3, 3)).moveaxis(0, 2)  # 3 x 3 x B
+            distance_shift_arr = torch.tensordot(
+                lattice_shift_arr, lattice_batchlast, 1
+            ).moveaxis(
+                2, 1
+            )  # 27 x B x 3
+            distance_vector_pbc = (
+                distance_vector[None] + distance_shift_arr[:, :, None, None]
+            )  # 27 x B x A x N x 3
+            distance_vector = distance_vector_pbc.moveaxis(0, -2).flatten(
+                start_dim=2, end_dim=3
+            )  # B x A x N*27 x 3
             distances = torch.linalg.norm(distance_vector, dim=-1)
 
             # expand neighbor (and neighbor mask)
-            neighbors = neighbors[:, :, :, None].tile((1, 1, 1, 27)).flatten(start_dim=2)  # B x A x Nx27
+            neighbors = (
+                neighbors[:, :, :, None].tile((1, 1, 1, 27)).flatten(start_dim=2)
+            )  # B x A x Nx27
             if neighbor_mask is not None:
-                neighbor_mask = neighbor_mask[:, :, :, None].tile((1, 1, 1, 27)).flatten(start_dim=2)
+                neighbor_mask = (
+                    neighbor_mask[:, :, :, None]
+                    .tile((1, 1, 1, 27))
+                    .flatten(start_dim=2)
+                )
             # distance_min_idx = torch.argmin(distances_pbc, dim=0)
             # distance_min_idx_tiled = distance_min_idx[None, ..., None].tile((1, 1, 1, 1, 3))
             # distance_vector = torch.gather(distance_vector_pbc, 0, distance_min_idx_tiled).squeeze(0)
             # distances = torch.gather(distances_pbc, 0, distance_min_idx[None]).squeeze(0)
-
 
         #     x_vec = distance_vector[:, :, :, 0]
         #     x_vec = (x_vec + 0.5 * self.box[0]) % self.box[0] - 0.5 * self.box[0]
@@ -110,7 +115,7 @@ class ShellProvider(nn.Module):
         #     distance_vector[:, :, :, 2] = z_vec
         # # print(distance_vector)
         else:
-            distances = torch.norm(distance_vector, 2, 3)   # B, A, N
+            distances = torch.norm(distance_vector, 2, 3)  # B, A, N
 
         if neighbor_mask is not None:
             # Avoid problems with zero distances in forces (instability of square
@@ -137,7 +142,9 @@ class ShellProvider(nn.Module):
                     neighbor_count = within_cutoff[i, j].sum()
                     neighbor_counts[i, j] = neighbor_count
                     temporal_distances[i][j] = distances[i, j, within_cutoff[i, j]]
-                    temporal_distance_vec[i][j] = distance_vector[i, j, within_cutoff[i, j]]
+                    temporal_distance_vec[i][j] = distance_vector[
+                        i, j, within_cutoff[i, j]
+                    ]
                     temporal_neighbor[i][j] = neighbors[i, j, within_cutoff[i, j]]
                     temporal_neighbor_mask[i][j] = torch.tensor([1] * neighbor_count)
             N = neighbor_counts.max()
@@ -147,14 +154,20 @@ class ShellProvider(nn.Module):
             neighbor_mask = torch.zeros((B, A, N), device=atoms.device)
             for i in range(B):
                 for j in range(A):
-                    distances[i, j, :neighbor_counts[i, j]] = temporal_distances[i][j]
-                    distance_vector[i, j, :neighbor_counts[i, j]] = temporal_distance_vec[i][j]
-                    neighbors[i, j, :neighbor_counts[i, j]] = temporal_neighbor[i][j]
-                    neighbor_mask[i, j, :neighbor_counts[i, j]] = temporal_neighbor_mask[i][j]
+                    distances[i, j, : neighbor_counts[i, j]] = temporal_distances[i][j]
+                    distance_vector[
+                        i, j, : neighbor_counts[i, j]
+                    ] = temporal_distance_vec[i][j]
+                    neighbors[i, j, : neighbor_counts[i, j]] = temporal_neighbor[i][j]
+                    neighbor_mask[
+                        i, j, : neighbor_counts[i, j]
+                    ] = temporal_neighbor_mask[i][j]
 
         if self.return_vecs:
             tmp_distances = torch.ones_like(distances)
-            tmp_distances[neighbor_mask != 0] = distances[neighbor_mask != 0] + self.epsilon
+            tmp_distances[neighbor_mask != 0] = (
+                distances[neighbor_mask != 0] + self.epsilon
+            )
 
             if self.normalize_vecs:
                 distance_vector = distance_vector / tmp_distances[:, :, :, None]

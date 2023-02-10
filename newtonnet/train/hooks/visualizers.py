@@ -14,7 +14,7 @@ class VisHook(object):
     """
 
     def create_grid(self, ndim, length, size):
-        half_length = length / 2.
+        half_length = length / 2.0
         offsets = torch.linspace(-half_length, half_length, size)
         if ndim == 3:
             grids = torch.meshgrid([offsets, offsets, offsets])
@@ -47,7 +47,6 @@ class VisHook(object):
             if not os.path.exists(path2save):
                 os.makedirs(path2save)
 
-
     def get_2d_rot_mat(self, theta):
         """
         Affine transformation matrix for counter clockwise rotation around origin.
@@ -64,12 +63,16 @@ class VisHook(object):
         """
         theta = np.radians(theta)
         theta = torch.tensor(theta)
-        return torch.tensor([[torch.cos(theta), -torch.sin(theta), 0],
-                             [torch.sin(theta), torch.cos(theta), 0]])
+        return torch.tensor(
+            [
+                [torch.cos(theta), -torch.sin(theta), 0],
+                [torch.sin(theta), torch.cos(theta), 0],
+            ]
+        )
 
     def rot_grid(self, x, theta, dtype, device):
         rot_mat = self.get_2d_rot_mat(theta)
-        rot_mat = rot_mat[None, ...].type(dtype).repeat(x.shape[0],1,1)
+        rot_mat = rot_mat[None, ...].type(dtype).repeat(x.shape[0], 1, 1)
         grid = F.affine_grid(rot_mat, x.size()).type(dtype)
         grid = grid.to(device)
         x = F.grid_sample(x, grid)
@@ -85,7 +88,6 @@ class Vis3DVoxelCartesian(VisHook):
 
 
 class VizMolVectors3D(VisHook):
-
     def __init__(self):
         pass
 
@@ -109,8 +111,8 @@ class VizMolVectors3D(VisHook):
             R = R.data.cpu().numpy()
             Z = Z.data.cpu().numpy()
             F = F.data.cpu().numpy()
-            dF= dF.data.cpu().numpy()
-            dR= dR.data.cpu().numpy()
+            dF = dF.data.cpu().numpy()
+            dR = dR.data.cpu().numpy()
 
         # move R
         R_mean = np.mean(R, axis=0)
@@ -128,20 +130,47 @@ class VizMolVectors3D(VisHook):
         dF *= 4
 
         # fig = plt.figure()
-        ax = plt.figure().add_subplot(projection='3d')
+        ax = plt.figure().add_subplot(projection="3d")
 
         # cpk coloring
-        atom_color = {1: 'gray', 8: 'r', 6: 'k', 7: 'b', 16: 'y'}
+        atom_color = {1: "gray", 8: "r", 6: "k", 7: "b", 16: "y"}
 
-        ax.quiver(R[:, 0], R[:, 1], R[:, 2], F[:, 0], F[:, 1], F[:, 2], color='g', **{'linewidth':1.5})  # , scale=21
-        ax.quiver(R[:, 0], R[:, 1], R[:, 2], dF[:, 0], dF[:, 1], dF[:, 2], color='b',**{'linewidth':1.5})  # , scale=21
+        ax.quiver(
+            R[:, 0],
+            R[:, 1],
+            R[:, 2],
+            F[:, 0],
+            F[:, 1],
+            F[:, 2],
+            color="g",
+            **{"linewidth": 1.5}
+        )  # , scale=21
+        ax.quiver(
+            R[:, 0],
+            R[:, 1],
+            R[:, 2],
+            dF[:, 0],
+            dF[:, 1],
+            dF[:, 2],
+            color="b",
+            **{"linewidth": 1.5}
+        )  # , scale=21
         if dR is not None and dR.ndim == dF.ndim:
-            ax.quiver(R[:, 0], R[:, 1], R[:, 2], dR[:, 0], dR[:, 1], dR[:, 2], color='r')  # , scale=21
-        ax.scatter(R[:, 0], R[:, 1], R[:, 2], color=[atom_color[z] for z in Z], s=250, alpha=0.8)
+            ax.quiver(
+                R[:, 0], R[:, 1], R[:, 2], dR[:, 0], dR[:, 1], dR[:, 2], color="r"
+            )  # , scale=21
+        ax.scatter(
+            R[:, 0],
+            R[:, 1],
+            R[:, 2],
+            color=[atom_color[z] for z in Z],
+            s=250,
+            alpha=0.8,
+        )
 
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
 
         # Hide grid lines
         ax.grid(False)
@@ -160,6 +189,3 @@ class VizMolVectors3D(VisHook):
         if self.path2save is not None:
             plt.savefig(os.path.join(self.path2save, "mol_3d_vectors.png"), dpi=300)
             plt.savefig(os.path.join(self.path2save, "mol_3d_vectors.eps"), dpi=300)
-
-
-
