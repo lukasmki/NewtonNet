@@ -827,6 +827,146 @@ def parse_ani_data(settings, device):
     )
 
 
+def parse_train_test_no_config(
+    device,
+    train_path,
+    train_size,
+    val_size,
+    test_path=None,
+    test_size=-1,
+    train_batch_size=10,
+    train_rot=0,
+    train_frz_rot=False,
+    train_keep_original=True,
+    val_batch_size=10,
+    val_rot=0,
+    val_frz_rot=False,
+    val_keep_original=True,
+    shuffle=True,
+    drop_last=True,
+    unit="kcal",
+    random_seed=90,
+):
+    """
+    same as `parse_train_test` but without having to pass a whole settings file
+    """
+
+    # read data
+    data = np.load(train_path)
+    test = None
+    if test_path:
+        test = dict(np.load(test_path))
+
+    dtrain = dict()
+    dtest = dict()
+
+    for key in list(data.keys()):
+        # copy Z embarrassingly Todo: make it data efficient by flexible environment module
+        if key == "Z":
+            dtrain["Z"] = np.tile(data["Z"], (data["E"].shape[0], 1))
+            if test is not None:
+                dtest["Z"] = np.tile(test["Z"], (test["E"].shape[0], 1))
+
+        elif key == "E":
+            if data["E"].ndim == 1:
+                dtrain["E"] = data["E"].reshape(-1, 1)
+            else:
+                dtrain[key] = data[key]
+
+            if test is not None:
+                if test["E"].ndim == 1:
+                    dtest["E"] = test["E"].reshape(-1, 1)
+                else:
+                    dtest[key] = test[key]
+
+        elif key in ["R", "F", "Z", "Ai", "Pij"]:
+            dtrain[key] = data[key]
+            if test is not None:
+                dtest[key] = test[key]
+
+    # convert unit
+    if unit == "ev":
+        dtrain["E"] = dtrain["E"] * 23.061
+        dtrain["F"] = dtrain["F"] * 23.061
+
+    # split the data
+    dtrain, dval, dtest_leftover = split(
+        dtrain,
+        train_size=train_size,
+        test_size=None,
+        val_size=val_size,
+        random_states=random_seed,
+    )
+    if test is None:
+        test_size = test_size
+        if test_size == -1:
+            dtest = dtest_leftover
+        else:
+            test_size = min(test_size, dtest_leftover["R"].shape[0])
+            n_select = sample_without_replacement(
+                dtest_leftover["R"].shape[0],
+                test_size,
+                random_state=random_seed,
+            )
+            for k in dtest_leftover.keys():
+                dtest[k] = dtest_leftover[k][n_select]
+
+    # extract data stats
+    normalizer = (dtrain["E"].mean(), dtrain["E"].std())
+
+    n_tr_data = dtrain["R"].shape[0]
+    n_val_data = dval["R"].shape[0]
+    n_test_data = dtest["R"].shape[0]
+    print(
+        "data size: (train,val,test): %i, %i, %i" % (n_tr_data, n_val_data, n_test_data)
+    )
+
+    # steps
+    tr_steps = int(np.ceil(n_tr_data / train_batch_size)) * (train_rot + 1)
+    val_steps = int(np.ceil(n_val_data / val_batch_size)) * (val_rot + 1)
+    test_steps = int(np.ceil(n_test_data / val_batch_size)) * (val_rot + 1)
+
+    env = ExtensiveEnvironment()
+
+    train_gen = extensive_train_loader(
+        data=dtrain,
+        env_provider=env,
+        batch_size=train_batch_size,
+        n_rotations=train_rot,
+        freeze_rotations=train_frz_rot,
+        keep_original=train_keep_original,
+        device=device,
+        shuffle=shuffle,
+        drop_last=drop_last,
+    )
+
+    val_gen = extensive_train_loader(
+        data=dval,
+        env_provider=env,
+        batch_size=val_batch_size,
+        n_rotations=val_rot,
+        freeze_rotations=val_frz_rot,
+        keep_original=val_keep_original,
+        device=device,
+        shuffle=shuffle,
+        drop_last=drop_last,
+    )
+
+    test_gen = extensive_train_loader(
+        data=dtest,
+        env_provider=env,
+        batch_size=val_batch_size,
+        n_rotations=val_rot,
+        freeze_rotations=val_frz_rot,
+        keep_original=val_keep_original,
+        device=device,
+        shuffle=False,
+        drop_last=False,
+    )
+
+    return train_gen, val_gen, test_gen, tr_steps, val_steps, test_steps, normalizer
+
+
 def parse_train_test(settings, device, unit="kcal"):
     """
     implementation based on train and validation size.
