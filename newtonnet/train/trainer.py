@@ -127,7 +127,7 @@ class Trainer:
             self.scheduler = LambdaLR(optimizer=optimizer, lr_lambda=lambda1)
 
         else:
-            raise NotImplemented(
+            raise NotImplementedError(
                 'scheduler "%s" is not implemented yet.' % lr_scheduler[0]
             )
 
