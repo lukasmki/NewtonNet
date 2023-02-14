@@ -21,18 +21,19 @@ class Trainer:
 
     def __init__(
         self,
+        device,
         model,
         loss_fn,
         optimizer,
-        requires_dr,
-        device,
         yml_path,
-        output_path,
         script_name,
-        lr_scheduler,
         energy_loss_w,
         force_loss_w,
-        loss_wf_decay,
+        output_path="output",
+        path_iter=1,
+        lr_scheduler=["decay", 0.05],
+        loss_wf_decay=0.0,
+        requires_dr=True,
         checkpoint_log=1,
         checkpoint_val=1,
         checkpoint_test=20,
@@ -59,7 +60,11 @@ class Trainer:
             self.multi_gpu = False
 
         # outputs
-        self._subdirs(yml_path, output_path, script_name)
+        if type(output_path) is list:
+            self._subdirs(yml_path, output_path[0], output_path[1], script_name)
+        else:
+            self._subdirs(yml_path, output_path, path_iter, script_name)
+
         if training:
             # hooks
             if hooks:
@@ -123,7 +128,10 @@ class Trainer:
                 min_lr=lr_scheduler[4],
             )
         elif lr_scheduler[0] == "decay":
-            lambda1 = lambda epoch: np.exp(-epoch * lr_scheduler[1])
+
+            def lambda1(epoch):
+                return np.exp(-epoch * lr_scheduler[1])
+
             self.scheduler = LambdaLR(optimizer=optimizer, lr_lambda=lambda1)
 
         else:
@@ -131,13 +139,12 @@ class Trainer:
                 'scheduler "%s" is not implemented yet.' % lr_scheduler[0]
             )
 
-    def _subdirs(self, yml_path, output_path, script_name):
+    def _subdirs(self, yml_path, output_path, path_iter, script_name):
         # create output directory and subdirectories
-        path_iter = output_path[1]
-        out_path = os.path.join(output_path[0], "training_%i" % path_iter)
+        out_path = os.path.join(output_path, "training_%i" % path_iter)
         while os.path.exists(out_path):
             path_iter += 1
-            out_path = os.path.join(output_path[0], "training_%i" % path_iter)
+            out_path = os.path.join(output_path, "training_%i" % path_iter)
         os.makedirs(out_path)
         self.output_path = out_path
 
@@ -156,8 +163,17 @@ class Trainer:
 
         script_out = os.path.join(self.output_path, "run_scripts")
         os.makedirs(script_out)
-        shutil.copyfile(yml_path, os.path.join(script_out, os.path.basename(yml_path)))
-        shutil.copyfile(script_name, os.path.join(script_out, script_name))
+        if os.path.exists(yml_path):
+            shutil.copyfile(
+                yml_path, os.path.join(script_out, os.path.basename(yml_path))
+            )
+        else:
+            print(f"File {yml_path} doesn't exist.")
+
+        if os.path.exists(script_name):
+            shutil.copyfile(script_name, os.path.join(script_out, script_name))
+        else:
+            print(f"File {script_name} doesn't exist.")
 
     def _hooks(self, hooks):
         hooks_list = []
@@ -686,7 +702,6 @@ class Trainer:
             irc_mae_F = 0
             test_mae_E = 0
             test_mae_F = 0
-            test_error = 0
             if self.best_val_loss > val_error:
                 self.best_val_loss = val_error
                 if self.multi_gpu:
@@ -774,7 +789,7 @@ class Trainer:
                         torch.save(
                             outputs, os.path.join(self.val_out_path, "test_results.pkl")
                         )
-                        test_error = outputs["RMSE"]
+                        outputs["RMSE"]
                     last_test_epoch = self.epoch
                     # np.save(os.path.join(self.val_out_path, 'test_Ei_epoch%i'%self.epoch), outputs['Ei'])
 

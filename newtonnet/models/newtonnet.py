@@ -7,6 +7,7 @@ from newtonnet.layers.shells import ShellProvider
 from newtonnet.layers.scalers import ScaleShift, TrainableScaleShift
 from newtonnet.layers.cutoff import CosineCutoff, PolynomialCutoff
 from newtonnet.layers.representations import RadialBesselLayer
+from newtonnet.layers.activations import get_activation_by_string
 
 
 class NewtonNet(nn.Module):
@@ -43,9 +44,10 @@ class NewtonNet(nn.Module):
 
     def __init__(
         self,
-        resolution,
-        n_features,
-        activation,
+        device,
+        activation="swish",
+        resolution=20,
+        n_features=128,
         n_interactions=3,
         dropout=0.0,
         max_z=10,
@@ -54,14 +56,13 @@ class NewtonNet(nn.Module):
         normalizer=(0.0, 1.0),
         normalize_atomic=False,
         requires_dr=False,
-        device=None,
         create_graph=False,
         shared_interactions=False,
-        return_latent=False,
+        return_latent=True,
         layer_norm=False,
         atomic_properties=False,
         pair_properties=False,
-        double_update_latent=True,
+        double_update_latent=False,
         pbc=False,
         aggregation="sum",
     ):
@@ -69,7 +70,6 @@ class NewtonNet(nn.Module):
 
         self.requires_dr = requires_dr
         self.create_graph = create_graph
-        self.normalize_atomic = normalize_atomic
         self.return_intermediate = return_latent
         self.pbc = pbc
 
@@ -86,6 +86,9 @@ class NewtonNet(nn.Module):
         # atomic embedding
         self.n_features = n_features
         self.embedding = nn.Embedding(max_z, n_features, padding_idx=0)
+
+        if type(activation) is str:
+            activation = get_activation_by_string(activation)
 
         # d1 message
         self.n_interactions = n_interactions
