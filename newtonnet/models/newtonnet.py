@@ -243,7 +243,7 @@ class NewtonNet(nn.Module):
 
         if self.pair_properties:
             Pij = self.pair_property(msij)  # B,A,N,1
-            output["Pij"] = Pij.squeeze(-1)  # B,A,N
+            output["Pij"] = Pij.squeeze(-1)
 
         Ei = self.atomic_energy(a)
         if self.normalize_atomic:
