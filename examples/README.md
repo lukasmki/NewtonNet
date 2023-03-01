@@ -1,15 +1,23 @@
 # NewtonNet Examples
 
-Run the driver (`run.py`) in the example folder.
+Run the driver (`model_train.py`) in the example folders.
 
 ```bash
 cd examples/train-cpu
-python3 run.py
+python3 model_train.py
 ```
 
-or use the command-line tool.
+Example filepaths are relative to the directory the driver is contained in.
+
+An example filestructure would be the following, with `model_train.py` being run from the `project` dir.
 
 ```bash
-cd examples/train-cpu
-newtonnet_train -c config.yml
+project/
+ ├── model_train.py
+ ├── output/
+ |    ├── training_1/
+ |    └── training_2/
+ └── dataset/
+      ├── data1.npz
+      └── data2.npz
 ```
